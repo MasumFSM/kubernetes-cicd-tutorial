@@ -27,7 +27,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Build and push Docker image
+      - name: Build and push Docker image (GHCR)
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -36,6 +36,24 @@ jobs:
             ${{ env.IMAGE_NAME }}:latest
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
+      # ---------- DockerHub Build Section ----------
+      - name: Login to Docker Hub
+        id: docker-hub
+        env:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+        run: docker login -u $username -p $password 
+
+      - name: Build Docker Image (DockerHub)
+        id: build-docker-image
+        run: |
+          docker build . -f Dockerfile -t ${{ secrets.DOCKERHUB_USERNAME }}/demo-image-test:latest
+
+      - name: Push Docker Image (DockerHub)
+        id: push-docker-image
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/demo-image-test:latest
+
+      # ---------- GitOps Update Section ----------
       - name: Update GitOps repository
         shell: bash
         env:
@@ -54,5 +72,5 @@ jobs:
           git config --global user.email "actions@github.com"
           git add deployment.yaml
           git commit -m "Update image to ${{ github.sha }}"
-          git push -f https://${GIT_TOKEN}@github.com/MasumFSM/grade-api-gitops.git main
 
+          git push -f https://${GIT_TOKEN}@github.com/MasumFSM/grade-api-gitops.git main
